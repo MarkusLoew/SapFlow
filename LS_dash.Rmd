@@ -1,0 +1,223 @@
+---
+title: "k analysis"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    source_code: embed
+runtime: shiny
+---
+
+```{r global, include = FALSE}
+library(shiny)
+library(plyr)
+library(ggplot2)
+# load data in 'global' chunk so it can be shared by all users of the dashboard
+load("~/AgFace/Topics/Sap_flow/df_cast_flex.RData")
+
+# set theme for figures
+# set the ggplot2 theme for the whole session
+theme_set(theme_bw())
+theme_replace(strip.background = element_rect(fill = "white"),
+              panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              legend.key       = element_blank())
+```
+
+```{r}
+min.date <- min(df.cast$Date, na.rm = TRUE)
+mean.date <- mean(df.cast$Date, na.rm = TRUE)
+max.date <- max(df.cast$Date, na.rm = TRUE)
+systems  <- sort(unique(df.cast$SYSTEM))
+out      <- reactive(df.cast[df.cast$Date     == input$MyDate &
+                             df.cast$SYSTEM   == input$MySystem &
+                             df.cast$SensorID == input$MySensor &
+                             df.cast$TOD      == "Daytime", ])
+
+
+# Reactive that returns the whole data if there is no brush, selection index is added to data
+selectedData <- reactive({
+  data <- brushedPoints(out(), input$plot1_brush, allRows = TRUE)
+  if (nrow(data) == 0)
+    data <- out()
+  data
+})
+
+outwindow.start <- reactive(min(selectedData()$TIMESTAMP[selectedData()$selected_ == TRUE]))
+outwindow.stop  <- reactive(max(selectedData()$TIMESTAMP[selectedData()$selected_ == TRUE]))
+outwindow.length <- reactive(difftime(outwindow.stop(), outwindow.start(), units = "mins"))
+
+observeEvent(input$StoreK, ignoreInit = FALSE, {
+   Kresult <- data.frame(Date = input$MyDate,
+                   SYSTEM = input$MySystem,
+                 SensorID = input$MySensor,
+               Start.time = outwindow.start(),
+                Stop.time = outwindow.stop(),
+                        K = k.mean())
+     
+   myfilename <- paste("K-analysis ", Sys.time(), ".RData", sep = "")
+   
+   save(Kresult, file = myfilename)
+   #write.csv(tosave, file = myfilename, row.names = F)
+   #input$StoreK <- 0
+})
+
+observeEvent(input$DeleteK, ignoreInit = FALSE, {
+         Kfiles <- list.files(pattern = "^K-analysis")
+         file.remove(Kfiles)
+})
+```
+
+Column {.sidebar}
+-----------------------------------------------------------------------
+### Daily k analysis
+
+
+k value is shown on top of right hand figure.
+
+
+```{r}
+dateInput("MyDate", label = "Select day",
+          value = mean.date, min = min.date, max = max.date)
+selectInput("MySensor", label = "Select SensorID",
+          choices = c("1", "2"), selected = "1")
+selectInput("MySystem", label = "Select SYSTEM",
+           choices = systems, selected = "SYS1")
+radioButtons("TempThres", label = "Use 1°C temp threshold for dT?",
+             choices = c("FALSE", "TRUE"), selected = "FALSE")
+```
+Draw box on the top figure to select data in all figures to calculate k. Length of the box should be about 30 minutes.
+
+
+```{r}
+renderText(paste("Box width is:", outwindow.length(), "mins"))
+```
+
+#### Store the currently displayed K-value
+
+
+```{r}
+actionButton("StoreK", label = "Klick to store K")
+
+```
+
+#### Delete all exisiting K
+
+
+```{r}
+actionButton("DeleteK", label = "Delete all K", width = 100)
+```
+
+
+
+
+
+#### Download
+Download the K-data
+
+
+```{r}
+downloadButton("Download", label = "Klick to download")
+```
+
+```{r}
+GrabRData <- function(file) {
+   load(file)
+   if (exists("Kresult.all") == TRUE) {
+     Kresult.all <- rbind(Kresult.all, Kresult) 
+   } else {
+     Kresult.all <- Kresult
+   }
+}
+
+Kfiles <- list.files(pattern = "^K-analysis")
+
+downloadHandler(filename = function() {
+               paste("K-analysis", Sys.time(), ".RData", sep="")}, 
+               content = function(file) { 
+
+               dailyK <- ldply(Kfiles, GrabRData)
+               #randname <- "x.RData"
+               randname <- tempfile(pattern = "K-analysis", fileext = "RData")
+               save(dailyK, file = randname)
+               #write.csv(dailyK, file, row.names = F)
+               #save(dailyK, file)
+               file.copy(as.character(randname), file)
+})
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Select time-period of interest here, other figures update automatically. dT vs. time {data-width=600}
+
+```{r}
+plotOutput("plot1", brush = brushOpts(id = "plot1_brush"))
+output$plot1 <- renderPlot({
+  if (input$TempThres == TRUE) {
+  ggplot(out()[out()$dT.offcor.good > 1, ],
+         aes(x = TIMESTAMP, y = dT.offcor.good)) + geom_line(aes(colour = SensorID)) 
+  } else {
+  ggplot(out(), aes(x = TIMESTAMP, y = dT.offcor.good)) + geom_line(aes(colour = SensorID)) 
+  }
+})
+
+```
+
+### Jw vs time
+
+```{r}
+renderPlot({
+  ggplot(selectedData()[#selectedData()$Sapflow_Avg < 3 &
+                        #selectedData()$Sapflow_Avg > -0.1 &
+                        is.finite(selectedData()$Sapflow_Avg), ], 
+         aes(x = TIMESTAMP, y = Jw_trad)) + geom_point(aes(colour = selected_)) + scale_y_continuous(limits = c(-0.1, 5))
+})
+```
+
+### Qf vs time
+
+```{r}
+renderPlot({
+  ggplot(selectedData(), aes(x = TIMESTAMP, y = Qf_Avg)) + geom_point(aes(colour = selected_))
+})
+```
+
+### Qr vs time
+
+```{r}
+renderPlot({
+  ggplot(selectedData(), aes(x = TIMESTAMP, y = Qr_Avg)) + geom_point(aes(colour = selected_))
+})
+```
+
+### PPFD vs time
+
+```{r}
+renderPlot({
+  ggplot(selectedData(), aes(x = TIMESTAMP, y = PPFD_from_SLD)) + geom_point(aes(colour = selected_))
+})
+```
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Resulting k-value and Jw vs dT relationship {data-width=400}
+
+```{r}
+k <- reactive(selectedData()[selectedData()$selected_ == TRUE &
+                             !is.na(selectedData()$Sapflow_Avg) &
+                             !is.na(selectedData()$dT.offcor.good), ])
+k.diff <- reactive((k()$Jw_trad) / k()$dT.offcor.good)
+k.mean <- reactive(mean(k.diff(), na.rm = TRUE))
+#renderText(k.mean())
+#renderTable({
+#  head(selectedData())
+#  })
+#reactive(write.csv(selectedData(), file = "fldash.csv", row.names = F))
+
+renderPlot({
+  ggplot(selectedData(), aes(x = dT.offcor.good, y = Jw_trad)) + geom_point(aes(colour = selected_)) +
+         labs(title = paste("k is", round(k.mean(), 3)))
+})
+
+```

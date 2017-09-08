@@ -1,0 +1,54 @@
+Sap flow calculations from Dynagage sheet
+
+Pin (W) = (Vin/Attenuator)^2/Resistance    Attenuator = 1
+Kst = 0.28 (W m-1 K-1)
+
+Qv (W) = Kst * area * (Bh - Ah) / 0.04/distancemm/10
+Qr (W) = Ksh * Ch
+Qf (W) = Pin - Qv - Qr
+dT (C) = (Ah + Bh)/2/0.040
+KshApp = (Pin - Qv) / Ch
+Flow (g h-1) = Qf/4.186/dT*3600
+
+
+Formulae (See manual):
+Pin=(Vin/Attenuator)^2/Resistance
+Qv=Kst*A*(Bh-Ah)/dX/0.040/10
+Qr=KshInUse*Ch
+Qf=Pin-Qv-Qr
+dT=(Ah+Bh)/2/0.040
+KshInUse= set by user (0.8 default)
+KshApp=(Pin-Qv)/Ch # determined at zero flow at nighttime
+Flow=Qf/Cp/dT
+
+
+In CR1000:
+'------ Sap flow calculations every 60 seconds -----
+
+    For i = 1 To Num_SGA
+      ' Power input (heaters) calculation (Pin)
+      SYS5_OutputData(i,4) = (SYS5_RawData_SGA(i,4) * SYS5_RawData_SGA(i,4)) / HeaterResistor(i)
+
+      ' Vertical flux calculation (Qv)
+      SYS5_OutputData(i,5) = ((SYS5_RawData_SGA(i,3) - SYS5_RawData_SGA(i,2)) / (4.0 * TCGap(i))) * CrossSectArea(i) * ThermalCond(i)
+
+      ' Radial flux calculation (Qr)
+      SYS5_OutputData(i,6) = (SYS5_RawData_SGA(i,1) * Ksh(i))
+
+      ' Sapflow flux calculation (Qf)
+      SYS5_OutputData(i,7) = SYS5_OutputData(i,4) - SYS5_OutputData(i,5) - SYS5_OutputData(i,6)
+
+      ' Ksh apparent calculation (Kshapp)
+      SYS5_OutputData(i,2) = (SYS5_OutputData(i,4) - SYS5_OutputData(i,5)) / (SYS5_RawData_SGA(i,1))
+
+      ' dT calculation (degrees Celcius)
+      SYS5_OutputData(i,3) = ((SYS5_RawData_SGA(i,2) + SYS5_RawData_SGA(i,3)) / 2) * 25.0
+
+      ' Sapflow calculation
+      SYS5_OutputData(i,1) = (SYS5_OutputData(i,7) / (SYS5_OutputData(i,3)*4.186)) * 3600
+
+
+# dT calculation is the same in logger and self-calculated
+# Qr is much higher self-calculated compared to logger! That is a matter of Ksh!
+# Qf is dramatically lower self-calculated compared to logger. Follow-up to Ksh!
+
