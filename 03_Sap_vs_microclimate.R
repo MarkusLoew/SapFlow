@@ -205,7 +205,7 @@ p
 
 # statistical test for mean VPD for period before Oct 29
 my.lme <- lme(VPD.mean ~ CO2_treatment * Cultivar,
-              random = ~ 1 | Date/Ring,
+              random = ~ 1 | Date / Ring,
               na.action = na.omit,
               data = mid.day.mean[mid.day.mean$Date < as.Date("2015-10-29"), ])
 anova(my.lme)
@@ -213,7 +213,7 @@ anova(my.lme)
 
 # statistical test for mean VPD for period before November 1
 my.lme <- lme(VPD.mean ~ CO2_treatment * Cultivar,
-              random = ~ 1 | Date/Ring,
+              random = ~ 1 | Date / Ring,
               na.action = na.omit,
               data = mid.day.mean[mid.day.mean$Date < as.Date("2015-11-01"), ])
 anova(my.lme)

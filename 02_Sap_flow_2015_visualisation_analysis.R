@@ -12,6 +12,7 @@ library(lmediaplots)
 library(effects)
 library(cowplot)
 library(ggjoy)
+library(predictmeans)
 
 
 setwd("~/AgFace/Topics/Sap_flow")
