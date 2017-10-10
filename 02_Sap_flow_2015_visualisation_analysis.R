@@ -216,12 +216,35 @@ p <- ggplot(Jw.mean[Jw.mean$TIMESTAMP < as.POSIXct("2015-11-10") &
                     Jw.mean$TIMESTAMP > as.POSIXct("2015-10-20") &
                     Jw.mean$my.Jw >= 0 &
                     Jw.mean$PPFD_from_SLD > 50 &
-                    Jw.mean$VPD_Avg > 0, ], 
+                    Jw.mean$VPD_Avg > 0.4 &
+                    Jw.mean$TOD == "Daytime" &
+                    Jw.mean$Stem.intact == "Stem ok" &
+                    Jw.mean$Stem.position == "upright" &
+                    !is.na(Jw.mean$SYSTEM), ], 
             aes(y = my.Jw, x = VPD_Avg))
   p <- p + geom_point(alpha = 0.3)
   p <- p + geom_smooth(aes(colour = SensorID), method = "lm")
   p <- p + scale_y_continuous(limits = c(0, 5))
   p <- p + facet_grid(SYSTEM ~ .)
+p
+
+
+Jw.mean.selected <- Jw.mean[ #Jw.mean$TIMESTAMP < as.POSIXct("2015-11-10") &
+                    #Jw.mean$TIMESTAMP > as.POSIXct("2015-10-20") &
+                    Jw.mean$my.Jw >= 0 &
+                    Jw.mean$PPFD_from_SLD > 50 &
+                    Jw.mean$VPD_Avg > 0.4 &
+                    Jw.mean$TOD == "Daytime" &
+                    #Jw.mean$Stem.intact == "Stem ok" &
+                    #Jw.mean$Stem.position == "upright" &
+                    !is.na(Jw.mean$SYSTEM), ]
+Jw.mean.selected <- Jw.mean.selected[!is.na(Jw.mean.selected$CO2_treatment), ]
+
+
+p <- ggplot(Jw.mean.selected, aes(x = VPD_Avg, y = my.Jw, colour = Cultivar))
+  p <- p + geom_point()
+  p <- p + geom_smooth()
+  p <- p + facet_grid(Stem.intact ~ CO2_treatment)
 p
 
 # VPD dependency for each plant # should this be done per day?
@@ -341,7 +364,7 @@ df.cast.30min <- ddply(df.cast,
                          Cultivar, PlantID, SensorID),
                        colwise(mean, na.rm = TRUE))
 
-for.test <- df.cast.30min[df.cast.30min$Hour >= 12 &
+for.test <- df.cast.30min[df.cast.30min$Hour >= 10 &
                           df.cast.30min$Hour <= 15 , ]#&
                           # df.cast.30min$TIMESTAMP > zoom.start &
                           # df.cast.30min$TIMESTAMP < zoom.end, ]
@@ -356,6 +379,11 @@ my.lme <- lme(my.Jw.rel ~ CO2_treatment * Cultivar,
               data = for.test,
               na.action = na.omit)
 anova(my.lme)
+# ==> at mid-day (10:00 to 15:00), CO2 effect, a Cultivar effect, but interaction found.
+# library(predictmeans)
+predictmeans(my.lme, "CO2_treatment", newwd = FALSE)
+predictmeans(my.lme, "Cultivar", newwd = FALSE)
+predictmeans(my.lme, "CO2_treatment:Cultivar", newwd = FALSE)
 
 p <- ggplot(for.test, aes(x = Cultivar, y = my.Jw.rel))
   p <- p + geom_boxplot(aes(fill = CO2_treatment))
@@ -476,9 +504,21 @@ p <- ggplot(max.flow[max.flow$hour >= 6 &
                      !(is.na(max.flow$hour)), ], 
             aes(x = hourmin))
   #p <- p + geom_histogram(aes(fill = CO2_treatment, linetype = Cultivar), alpha = 0.3)
-  p <- p + geom_density(aes(fill = CO2_treatment, linetype = Cultivar), alpha = 0.3)
+  p <- p + geom_density(aes(fill = CO2_treatment, linetype = Cultivar), alpha = 0.55)
+  p <- p + scale_fill_manual(values = c("indianred", "lightblue"),
+                               labels = c(expression(textstyle(aCO[2])), 
+                                          expression(textstyle(eCO[2]))))
   #p <- p + facet_grid(CO2_treatment ~ .)
+  p <- p + theme(legend.position = c(0.15, 0.8))
+  p <- p + labs(y = "Probability of sap flow peak, kernel density (ratio)",
+                x = "Time of day",
+                fill = expression(CO[2]~treatment))
 p
+fig.sapflow.peak.density <- p
+
+ggsave(fig.sapflow.peak.density,
+       file = "Peak_sapflow_time.png",
+       width = 9, height = 6, dpi = 96)
 
 # trying a joyplot
 p <- ggplot(max.flow[max.flow$hour >= 6 &

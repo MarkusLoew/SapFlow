@@ -26,7 +26,7 @@ theme_replace(strip.background = element_rect(fill = "white"),
 CO2.label  <- expression(textstyle(CO[2]~treatment))
 CO2.treats <- c(expression(textstyle(aCO[2])), 
                 expression(textstyle(eCO[2])))
-CO2_lab <- expression(CO[2]~treatment)
+CO2_lab    <- expression(CO[2]~treatment)
 
 # key dates
 DC65.date <- as.Date("2015-10-09") # TraitFACE wet (rainfed plots on Oct-7)
@@ -177,9 +177,9 @@ rm(fig.sap.flow.timecourse)
 # Qv=Kst*A*(Bh-Ah)/dX/0.040/10
 # stem diameter 3.3 or 3.4 mm, average 3.35 mm
 distance <- 10 # mm
-area_cm <- (pi * (3.35/2)^2) # cm
-kst <- 0.28 # W m-1 K-1
-Cp <- 4.186 # J g-1 K-1, specific heat of water
+area_cm  <- (pi * (3.35/2)^2) # cm
+kst     <- 0.28 # W m-1 K-1
+Cp      <- 4.186 # J g-1 K-1, specific heat of water
 # myQv <- with(df.cast, kst * area_cm * (RawBh_Avg - RawAh_Avg) / distance / 0.040 / 10)
 
 # for sap flow on wheat, Qv is set to 0 
@@ -189,7 +189,7 @@ myQv <- 0
 df.cast$myQv <- myQv
 
 # KshApp = (Pin-Qv)/Ch
-myKsh <- with(df.cast, (Pin_Avg - myQv) / RawCh_Avg)
+myKsh         <- with(df.cast, (Pin_Avg - myQv) / RawCh_Avg)
 df.cast$myKsh <- myKsh 
 
 # compare myKsh with Kshapp from logger
@@ -280,11 +280,11 @@ p <- ggplot(df.cast[df.cast$SYSTEM == "SYS2" &
 p
 
 # replace all logger-calculated elements with the self-calculated equivalents
-df.cast.orig   <- df.cast
-df.cast$Qr_Avg <- df.cast$myQr
-df.cast$Qv_Avg <- df.cast$myQv
-df.cast$Qf_Avg <- df.cast$myQf
-df.cast$dT_Avg <- df.cast$mydT
+df.cast.orig        <- df.cast
+df.cast$Qr_Avg      <- df.cast$myQr
+df.cast$Qv_Avg      <- df.cast$myQv
+df.cast$Qf_Avg      <- df.cast$myQf
+df.cast$dT_Avg      <- df.cast$mydT
 df.cast$Kshapp_Avg  <- df.cast$myKsh
 df.cast$Sapflow_Avg <- df.cast$myFlow
 df.cast$my.sapflow  <- NULL
@@ -299,7 +299,7 @@ df.cast$my.sapflow  <- NULL
 seven.days.before.cut <- stem.cut.date - ((24 * 60 * 60) * 7)
 
 p <- fig.sap.flow.timecourse
-p <- p + coord_cartesian(xlim = c(seven.days.before.cut, max(df.cast$TIMESTAMP)))
+  p <- p + coord_cartesian(xlim = c(seven.days.before.cut, max(df.cast$TIMESTAMP)))
 p 
 
 # the time when the cut-off stems were back in a vertical postion 
@@ -407,33 +407,58 @@ ggplot(bell.shape, aes(x = seconds, y = dT.bell)) + geom_line()
 
 # different response at different times of the day?
 p <- ggplot(df.cast[df.cast$TIMESTAMP >= seven.days.before.cut &
-                    df.cast$TOD == "Daytime" &
+                    #df.cast$TOD == "Daytime" &
                     df.cast$Stem.position == "upright", ], 
             aes(Temp_Avg, y = dT_Avg))
-  p <- p + geom_point(aes(colour =  Stem.intact))
-  p <- p + geom_smooth(method = "lm")
-  p <- p + facet_grid(Stem.intact ~ Hour)
-  p <- p + coord_cartesian(ylim = c(-2.5, 4))
-  p <- p + labs(title = "Relationship temperature difference in sap vs air temperature for live and cut stems",
-                subtitle = "cutting the stem changes relationship between dT and air temperature",
-                y = expression(paste(Delta, T~"["*degree*C*"]")),
+  p <- p + geom_point(aes(colour =  Stem.intact), alpha = 0.15)
+  p <- p + geom_smooth(method = "lm", aes(linetype = Stem.intact))
+  #p <- p + facet_grid(Stem.intact ~ Hour)
+ # p <- p + facet_grid(Stem.intact ~ .)
+  p <- p + coord_cartesian(ylim = c(-2, 4))
+#  p <- p + annotate("text", x = 9, y = 3, label = "Slope and intercept are sign. diff\nbetween live and cut stem.\np <0.001 each")
+  p <- p + labs(title = "Relationship of temperature difference in sap and air temperature for live and cut stems",
+                subtitle = expression(paste("Slope and intercept are significantly different comparing live and cut stems. ", Delta, "T was then corrected to remove any relationship with air temperature.")),
+                y = expression(paste(Delta, "T in sap ", "["*degree*C*"]")),
                 x = expression("Air temperature"~"["*degree*C*"]"),
                 colour = "Stem",
-                caption = "Shown for individual daytime (7 - 19) hours. 30 days of data for live stems (16 plants), six days of data for cut stems on eight plants.")
-  p <- p + theme(legend.position = c(0.89, 0.91),
+                linetype = "Stem",
+                #caption = "Shown for individual daytime (7 - 19) hours. 30 days of data for live stems (16 plants), six days of data for cut stems on eight plants.")
+                caption = "Seven days of data for live stems (16 plants), six days of data for cut stems (eight plants).")
+  p <- p + theme(legend.position = c(0.85, 0.75),
                  legend.background = element_rect(fill = "transparent"),
+                 #legend.key = element_rect(fill = "white"),
                  legend.text = element_text(size = rel(0.6)),
-                 panel.grid.major.y = element_line(colour = "grey92"))
+                 panel.grid.major.y = element_line(colour = "grey90"))
+  p <- p + guides(colour = guide_legend(override.aes = list(fill = NA, alpha = 1)))
 p
 ggsave(file = "Cutting_stem_changes_dT_vs_temp_relationship.pdf",
-       width = 11, height = 7)
+       width = 7 * sqrt(2), height = 7)
+ggsave(file = "Cutting_stem_changes_dT_vs_temp_relationship.png",
+       width = 7 * sqrt(2), height = 7, dpi = 96)
+
+
+# same figure for hourly means
+df.cast.hourly.mean <- ddply(df.cast[df.cast$TIMESTAMP >= seven.days.before.cut &
+                    df.cast$TOD == "Daytime" &
+                    df.cast$Stem.position == "upright", ],
+                    .(SYSTEM, SensorID, Date, Ring, TOD, Hour, Stem.intact, Stem.position),
+                    summarise,
+                    dT.mean      = mean(dT_Avg, na.rm = TRUE),
+                    airtemp.mean = mean(Temp_Avg, na.rm = TRUE),
+                    VPD.mean = mean(VPD_Avg, na.rm = TRUE))
+
+p <- ggplot(df.cast.hourly.mean, aes(x = airtemp.mean, y = dT.mean, colour = Stem.intact))
+  p <- p + geom_point(alpha = 0.3)
+  p <- p + geom_smooth(method = "lm")
+  #p <- p + facet_grid(Stem.intact ~ .)
+p
 
 
 # dT vs airtemp figure for individual days
-MydTPlot <- function(data) {
+MydTPlot <- function(data, x.para = "Temp_Avg", y.para = "dT_Avg") {
    RingSensor <- unique(interaction(data$Date))
    p <- ggplot(data, 
-            aes(Temp_Avg, y = dT_Avg))
+            aes_string(x = x.para, y = y.para))
    p <- p + geom_point(aes(colour =  Stem.intact))
    p <- p + geom_smooth(method = "lm")
    p <- p + facet_grid(Stem.intact ~ .)
@@ -451,12 +476,15 @@ return(p)
 
 # what's going on with the "Date" parameter? # has now been corrected above
 # df.cast$Date <- as.Date(format(df.cast$TIMESTAMP, "%F"))
-
-dtdaily <- dlply(df.cast[df.cast$TIMESTAMP >= seven.days.before.cut &
-                         df.cast$TOD == "Daytime" &
-                         df.cast$Stem.position == "upright", ],
+dtdaily <- dlply(df.cast.hourly.mean,
                  .(Date),
-                 function(x) MydTPlot(x))
+                 function(x) MydTPlot(x, x.para = "airtemp.mean", y.para = " dT.mean"))
+
+#dtdaily <- dlply(df.cast[df.cast$TIMESTAMP >= seven.days.before.cut &
+#                         df.cast$TOD == "Daytime" &
+#                         df.cast$Stem.position == "upright", ],
+#                 .(Date),
+#                 function(x) MydTPlot(x))
 pdf(file = "dT-airtemp_per_day.pdf",
     width = 9, height = 7)
 print(dtdaily)
@@ -470,7 +498,7 @@ dev.off()
 
 MyLm <- function(data, response = dT_Avg, predictor = Temp_Avg) {
     arguments <- as.list(match.call())
-    response <- eval(arguments$response, data)
+    response  <- eval(arguments$response, data)
     predictor <- eval(arguments$predictor, data)
     
     res.missing <- sum(is.na(response))
@@ -478,17 +506,21 @@ MyLm <- function(data, response = dT_Avg, predictor = Temp_Avg) {
     
     if (res.missing == length(response &
         pre.missing == length(predictor))) {
+        message("No data")
         inter <- NA
         slope <- NA
-        } else {
-    my.lm <- try(lm(response ~ predictor, na.action = na.omit))}
-    
-    if (inherits(my.lm, "try-error")) {
-       inter <- NA
-       slope <- NA
     } else {
-    inter <- coef(my.lm)[1]
-    slope <- coef(my.lm)[2]}
+        message("success")
+        my.lm <- try(lm(response ~ predictor, na.action = na.omit))
+        print(response)
+    
+	    if (inherits(my.lm, "try-error")) {
+	       message("again no data")
+       	inter <- NA
+       	slope <- NA
+	    } else {
+    	inter <- coef(my.lm)[1]
+    	slope <- coef(my.lm)[2]}}
     
     result <- data.frame(inter = inter,
                          slope = slope)
@@ -497,17 +529,65 @@ MyLm <- function(data, response = dT_Avg, predictor = Temp_Avg) {
 
 MyLm(df.cast, response = dT_Avg, predictor = Temp_Avg)
 
+MyLm(df.cast.hourly.mean, response = dT.mean, predictor = airtemp.mean)
+
 Linear.fit <- ddply(df.cast[df.cast$TIMESTAMP >= seven.days.before.cut &
-                            #df.cast$TOD == "Daytime" &
+                           # df.cast$TOD == "Daytime" &
                             df.cast$Stem.position == "upright" &
                             df.cast$Date < as.Date("2015-11-30"), ],
-                    .(Date, Hour, Stem.position, Stem.intact),
+                    .(Date, SYSTEM, SensorID, Stem.position, Stem.intact),
                     function(x) {print(unique(x$Date))
                                  MyLm(x, response = dT_Avg, predictor = Temp_Avg)})
-ggplot(Linear.fit, aes(x = Stem.intact, y = slope)) + geom_boxplot()
+
+# analys based on hourly data instead of all data
+#Linear.fit <- ddply(df.cast.hourly.mean,
+#  .(Date, SYSTEM, SensorID, Stem.position, Stem.intact),
+#  function(x) {print(unique(x$Date))
+#               MyLm(x, response = dT.mean, predictor = airtemp.mean)})
+
+# hourly vpd response
+#Linear.fit.vpd <- ddply(df.cast.hourly.mean,
+#  .(Date, SYSTEM, SensorID, Stem.position, Stem.intact),
+#  function(x) {print(unique(x$Date))
+#               MyLm(x, response = dT.mean, predictor = VPD.mean)})
+               
+ddply(Linear.fit,
+      #.(SYSTEM, SensorID, Stem.intact),
+      .(Stem.intact),
+      summarise,
+      mean.slope = mean(slope, na.rm = TRUE),
+      sd.slope   = sd(slope,   na.rm = TRUE),
+      mean.inter = mean(inter, na.rm = TRUE),
+      sd.inter   = sd(inter,   na.rm = TRUE))
+
+ggplot(Linear.fit, aes(x = Stem.intact, y = slope)) + geom_boxplot() + facet_grid(. ~ Date)
+
+p <- ggplot(Linear.fit[Linear.fit$Date != as.Date("2015-11-20"), ], 
+            aes(x = Date, y = slope, colour = Stem.intact)) 
+  #p <- p + stat_summary(fun.data = "mean_sdl")
+  p <- p + geom_line(aes(linetype = SensorID))
+  p <- p + facet_grid(SYSTEM ~ .)
+p
+
 ggplot(Linear.fit, aes(x = Stem.intact, y = inter)) + geom_boxplot()
 
-anova(lme(slope ~ Stem.intact, random = ~ 1 | Stem.intact, data = Linear.fit))
+anova(lme(slope ~ Stem.intact, 
+          random = ~ 1 | SYSTEM/SensorID,
+          #weights = varIdent(~ 1 | SYSTEM),
+          data = Linear.fit, #[Linear.fit$Date != as.Date("2015-11-20"), ],
+          na.action = na.omit))
+
+anova(lme(inter ~ Stem.intact, 
+          random = ~ 1 | SYSTEM/SensorID, 
+          data = Linear.fit,
+          na.action = na.omit))
+
+#anova(lme(slope ~ Stem.intact, 
+#          random = ~ 1 | Date/Stem.intact/SYSTEM/SensorID,
+#          weights = varIdent(~ 1 | Date),
+#          data = Linear.fit.vpd[Linear.fit.vpd$Date != as.Date("2015-11-20"), ],
+#          na.action = na.omit))
+
 
 my.lme <- lme(slope ~ 1, random = ~1 | Stem.intact/Hour, data = Linear.fit)
 anova(my.lme)
@@ -525,6 +605,7 @@ Anova(my.aov, type = "III")
 
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 # there is enough indication that there is a biological difference in the dT to airtemp relationship
+# ==> dT correction using the slope and intercept
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 ddply(Linear.fit,
@@ -535,8 +616,8 @@ ddply(Linear.fit,
       
 # function and coefficients for dT correction:
 # dT ~ slope * airtemp + inter
-cor.slope <- mean(Linear.fit$slope[Linear.fit$Stem.intact == "Stem cut"])
-cor.inter <- mean(Linear.fit$inter[Linear.fit$Stem.intact == "Stem cut"])
+cor.slope <- mean(Linear.fit$slope[Linear.fit$Stem.intact == "Stem cut"], na.rm = TRUE)
+cor.inter <- mean(Linear.fit$inter[Linear.fit$Stem.intact == "Stem cut"], na.rm = TRUE)
 
 # correction dT as function of Temp_Avg via subtraction
 # dT(Temp_Avg) = dT_Avg - (cor.slope * Temp_Avg + cor.inter)
@@ -1114,7 +1195,7 @@ Jw$my.Jw.rel_sd <- Jw.sd$my.Jw.rel_sd # was Jw.rel
 
 # power-off times
 power.off.start <- 22
-power.off.end <- 4
+power.off.end   <- 4
 
 Jw$Power <- "on"
 Jw$Power[Jw$Hour > 18 | Jw$Hour < 7] <- "off"
